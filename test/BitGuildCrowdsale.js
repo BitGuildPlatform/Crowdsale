@@ -2,7 +2,6 @@ var Crowdsale = artifacts.require("./BitGuildCrowdsale.sol");
 var Token = artifacts.require("./BitGuildToken.sol");
 
 var async = require('async');
-var util = require('./util.js');
 var config = require('../truffle.js');
 
 contract('BitGuildCrowdsale', function(accounts) {
