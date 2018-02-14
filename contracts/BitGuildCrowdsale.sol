@@ -56,7 +56,6 @@ contract BitGuildCrowdsale {
    */
   event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
 
-
   function BitGuildCrowdsale(uint256 _startTime, uint256 _endTime, address _token, address _wallet) public {
     require(_startTime >= now);
     require(_endTime >= _startTime);
@@ -79,7 +78,7 @@ contract BitGuildCrowdsale {
   function buyTokens(address beneficiary) public payable {
     require(beneficiary != address(0));
     require(whitelist[beneficiary]);
-    require(validPurchase());    
+    require(validPurchase());
 
     uint256 weiAmount = msg.value;
 
@@ -139,9 +138,9 @@ contract BitGuildCrowdsale {
     for (uint i = 0; i < _users.length; i++) {
       if (whitelist[_users[i]] == _whitelisted) continue;
       if (_whitelisted) {
-        totalWhitelisted++;
+        totalWhitelisted.add(1);
       } else {
-        totalWhitelisted--;
+        totalWhitelisted.sub(1);
       }
       whitelist[_users[i]] = _whitelisted;
     }
