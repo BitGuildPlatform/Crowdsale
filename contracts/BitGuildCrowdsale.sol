@@ -20,7 +20,7 @@ contract BitGuildCrowdsale {
 
   // Token being sold
   BitGuildToken public token;
-  
+
   // Admin (used only to manage whitelist/finalization)
   address admin;
 
@@ -35,7 +35,7 @@ contract BitGuildCrowdsale {
   address public wallet;
 
   // Predefined rate of PLAT to Ethereum (1/rate = crowdsale price)
-  uint256 public rate = 90843; 
+  uint256 public rate = 90843;
 
   // amount of raised money in wei
   uint256 public weiRaised;
@@ -43,7 +43,7 @@ contract BitGuildCrowdsale {
   // whitelist for KYC purposes
   mapping (address => bool) public whitelist;
   uint256 public totalWhitelisted = 0;
-  
+
   // Finalization flag for when we want to withdraw the remaining tokens after the end
   bool public crowdsaleFinalized = false;
 
@@ -61,7 +61,7 @@ contract BitGuildCrowdsale {
     require(_endTime >= _startTime);
     require(_token != address(0));
     require(_wallet != address(0));
-    
+
     admin = msg.sender;
     startTime = _startTime;
     endTime = _endTime;
@@ -102,7 +102,7 @@ contract BitGuildCrowdsale {
     bool endTimeReached = now > endTime;
     return capReached || endTimeReached || crowdsaleFinalized;
   }
-  
+
   // Bonuses for larger purchases (in tenths of percent)
   function bonusPercentForWeiAmount(uint256 weiAmount) public pure returns(uint256) {
     if (weiAmount >= 250 ether) return 175; // 17.5%
@@ -128,7 +128,7 @@ contract BitGuildCrowdsale {
     bool withinPeriod = now >= startTime && now <= endTime;
     bool nonZeroPurchase = msg.value != 0;
     bool withinCap = weiRaised.add(msg.value) <= cap;
-    
+
     return withinPeriod && nonZeroPurchase && withinCap && !crowdsaleFinalized;
   }
 
@@ -138,9 +138,11 @@ contract BitGuildCrowdsale {
     for (uint i = 0; i < _users.length; i++) {
       if (whitelist[_users[i]] == _whitelisted) continue;
       if (_whitelisted) {
-        totalWhitelisted.add(1);
+        totalWhitelisted++;
       } else {
-        totalWhitelisted.sub(1);
+        if (totalWhitelisted > 0) {
+          totalWhitelisted--;
+        }
       }
       whitelist[_users[i]] = _whitelisted;
     }
@@ -153,5 +155,5 @@ contract BitGuildCrowdsale {
     // send remaining tokens back to the admin
     uint256 tokensLeft = token.balanceOf(this);
     token.transfer(wallet, tokensLeft);
-  }  
+  }
 }

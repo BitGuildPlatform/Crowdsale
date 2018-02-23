@@ -69,6 +69,9 @@ contract('BitGuildCrowdsale', function(accounts) {
       var checks = [
         function() { return crowdsale.whitelist.call(accounts[0]).then(function(result) {
           assert.equal(result, true, "Account should have been whitelisted");
+        }) },
+        function() { return crowdsale.totalWhitelisted.call().then(function(result) {
+          assert.equal(result.toNumber(), 1, "Number of whitelisted accounts is incorrect");
         }) }
       ];
 
