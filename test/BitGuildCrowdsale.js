@@ -7,9 +7,9 @@ var config = require('../truffle.js');
 contract('BitGuildCrowdsale', function(accounts) {
 
   // Data from the contract for cross-validation
-  const rate = 90843;
-  const bonusFor25Eth = 1.1;
-  const bonusMax = 17.5;
+  const rate = 80000;
+  const bonusFor15Eth = 1.025;
+  const bonusMax = 1.1;
   const capInEth = 2500;
 
   const failedTransactionError = "Error: VM Exception while processing transaction: invalid opcode";
@@ -80,24 +80,31 @@ contract('BitGuildCrowdsale', function(accounts) {
     });
   });
 
-  it("Small purchase", function() {
+  it("Small purchases", function() {
 
     var token;
     var crowdsale;
-    var amountWei = 100;
+    var amountWei = web3.toWei(0.5, "ether");
 
     return prepareCrowdsaleAndWhitelist(Date.now()/1000, Date.now()/1000 + 200).then(function(result) {
 
       token = result.token;
       crowdsale = result.crowdsale;
 
-      return web3.eth.sendTransaction({from: accounts[0], to:crowdsale.address, value: amountWei});
+      return web3.eth.sendTransaction({from: accounts[0], to:crowdsale.address, value: amountWei, gas: 200000});
+
+    }).then(function(result) {
+
+      return web3.eth.sendTransaction({from: accounts[0], to:crowdsale.address, value: amountWei, gas: 200000});
 
     }).then(function(result) {
 
       var checks = [
         function() { return token.balanceOf.call(accounts[0]).then(function(result) {
-          assert.equal(result.toNumber(), rate * amountWei, "Wrong number of tokens purchased");
+          assert.equal(result.toNumber(), rate * amountWei * 2, "Wrong number of tokens purchased");
+        }) },
+        function() { return crowdsale.contributions.call(accounts[0]).then(function(result) {
+          assert.equal(result.toNumber(), amountWei * 2, "Wrong contribution captured");
         }) }
       ];
 
@@ -110,20 +117,20 @@ contract('BitGuildCrowdsale', function(accounts) {
 
     var token;
     var crowdsale;
-    var amountWei = 25 * web3.toWei(1, "ether");
+    var amountWei = 15 * web3.toWei(1, "ether");
 
     return prepareCrowdsaleAndWhitelist(Date.now()/1000, Date.now()/1000 + 200).then(function(result) {
 
       token = result.token;
       crowdsale = result.crowdsale;
 
-      return web3.eth.sendTransaction({from: accounts[0], to:crowdsale.address, value: amountWei});
+      return web3.eth.sendTransaction({from: accounts[0], to:crowdsale.address, value: amountWei, gas: 200000});
 
     }).then(function(result) {
 
       var checks = [
         function() { return token.balanceOf.call(accounts[0]).then(function(result) {
-          assert.equal(result.toNumber(), rate * amountWei * bonusFor25Eth, "Wrong number of tokens purchased");
+          assert.equal(result.toNumber(), rate * amountWei * bonusFor15Eth, "Wrong number of tokens purchased");
         }) }
       ];
 

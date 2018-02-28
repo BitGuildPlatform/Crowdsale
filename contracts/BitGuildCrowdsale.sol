@@ -29,16 +29,21 @@ contract BitGuildCrowdsale {
   uint256 public endTime;
 
   // Crowdsale cap (how much can be raised total)
-  uint256 public cap = 2500 ether;
+  uint256 public cap = 14062.5 ether;
 
   // Address where funds are collected
   address public wallet;
 
   // Predefined rate of PLAT to Ethereum (1/rate = crowdsale price)
-  uint256 public rate = 90843;
+  uint256 public rate = 80000;
+
+  // Min/max purchase
+  uint256 public minContribution = 0.5 ether;
+  uint256 public maxContribution = 1500 ether;
 
   // amount of raised money in wei
   uint256 public weiRaised;
+  mapping (address => uint256) public contributions;
 
   // whitelist for KYC purposes
   mapping (address => bool) public whitelist;
@@ -85,8 +90,9 @@ contract BitGuildCrowdsale {
     // calculate token amount to be created
     uint256 tokens = getTokenAmount(weiAmount);
 
-    // update state
+    // update total and individual contributions
     weiRaised = weiRaised.add(weiAmount);
+    contributions[beneficiary] = contributions[beneficiary].add(weiAmount);
 
     // Send tokens
     token.transfer(beneficiary, tokens);
@@ -103,33 +109,33 @@ contract BitGuildCrowdsale {
     return capReached || endTimeReached || crowdsaleFinalized;
   }
 
-  // Bonuses for larger purchases (in tenths of percent)
+  // Bonuses for larger purchases (in hundredths of percent)
   function bonusPercentForWeiAmount(uint256 weiAmount) public pure returns(uint256) {
-    if (weiAmount >= 250 ether) return 175; // 17.5%
-    if (weiAmount >= 100 ether) return 150; // 15%
-    if (weiAmount >= 50 ether) return 125;  // 12.5%
-    if (weiAmount >= 25 ether) return 100;  // 10%
-    if (weiAmount >= 12 ether) return 75;   // 7.5%
-    if (weiAmount >= 5 ether) return 50;    // 5%
-    if (weiAmount >= 1 ether) return 25;    // 2.5%
-    return 0; // 0% bonus if lower than 1 eth
+    if (weiAmount >= 500 ether) return 1000; // 10%
+    if (weiAmount >= 250 ether) return 750;  // 7.5%
+    if (weiAmount >= 100 ether) return 500;  // 5%
+    if (weiAmount >= 50 ether) return 375;   // 3.75%
+    if (weiAmount >= 15 ether) return 250;   // 2.5%
+    if (weiAmount >= 5 ether) return 125;    // 1.25%
+    return 0; // 0% bonus if lower than 5 eth
   }
 
   // Returns you how much tokens do you get for the wei passed
   function getTokenAmount(uint256 weiAmount) internal view returns(uint256) {
     uint256 tokens = weiAmount.mul(rate);
     uint256 bonus = bonusPercentForWeiAmount(weiAmount);
-    tokens = tokens.mul(1000 + bonus).div(1000);
+    tokens = tokens.mul(10000 + bonus).div(10000);
     return tokens;
   }
 
   // Returns true if the transaction can buy tokens
   function validPurchase() internal view returns (bool) {
     bool withinPeriod = now >= startTime && now <= endTime;
-    bool nonZeroPurchase = msg.value != 0;
+    bool moreThanMinPurchase = msg.value >= minContribution;
+    bool lessThanMaxPurchase = contributions[msg.sender] + msg.value <= maxContribution;
     bool withinCap = weiRaised.add(msg.value) <= cap;
 
-    return withinPeriod && nonZeroPurchase && withinCap && !crowdsaleFinalized;
+    return withinPeriod && moreThanMinPurchase && lessThanMaxPurchase && withinCap && !crowdsaleFinalized;
   }
 
   // Allows an admin to update whitelist
@@ -150,7 +156,7 @@ contract BitGuildCrowdsale {
 
   // Escape hatch in case the sale needs to be urgently stopped
   function finalizeCrowdsale() public {
-    require(msg.sender == admin);
+    require(msg.sender == wallet);
     crowdsaleFinalized = true;
     // send remaining tokens back to the admin
     uint256 tokensLeft = token.balanceOf(this);
