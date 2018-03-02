@@ -1,4 +1,5 @@
 var Crowdsale = artifacts.require("./BitGuildCrowdsale.sol");
+var Whitelist = artifacts.require("./BitGuildWhitelist.sol");
 var Token = artifacts.require("./BitGuildToken.sol");
 
 var async = require('async');
@@ -42,41 +43,62 @@ contract('BitGuildCrowdsale', function(accounts) {
 
   function prepareCrowdsaleAndWhitelist(startDate, endDate) {
     var token;
+    var whitelist;
     var crowdsale;
     return Token.new({from: accounts[adminAccount]}).then(function(instance) {
       token = instance;
-      return Crowdsale.new(startDate, endDate, token.address, accounts[walletAccount], {from: accounts[adminAccount]});
+      return Whitelist.new({from: accounts[adminAccount]});
+    }).then(function(instance) {
+      whitelist = instance;
+      return Crowdsale.new(startDate, endDate, token.address, accounts[walletAccount], whitelist.address, {from: accounts[adminAccount]});
     }).then(function(instance) {
       crowdsale = instance;
       token.transfer(crowdsale.address, tokensAllocated, {from: accounts[adminAccount]});
     }).then(function(result) {
-      return crowdsale.whitelistAddress([accounts[0]], true, {from: accounts[adminAccount]});
+      return whitelist.whitelistAddress([accounts[0]], true, {from: accounts[adminAccount]});
     }).then(function(result) {
-      return {token: token, crowdsale: crowdsale};
+      return whitelist.whitelistAddress([accounts[1]], true, {from: accounts[adminAccount]});
+    }).then(function(result) {
+      return {token: token, whitelist: whitelist, crowdsale: crowdsale};
     });
   }
 
   it("Whitelist check", function() {
 
-    var token;
-    var crowdsale;
+    var whitelist;
 
     return prepareCrowdsaleAndWhitelist(Date.now()/1000 + 100, Date.now()/1000 + 200).then(function(result) {
 
-      token = result.token;
-      crowdsale = result.crowdsale;
+      whitelist = result.whitelist;
 
       var checks = [
-        function() { return crowdsale.whitelist.call(accounts[0]).then(function(result) {
+        function() { return whitelist.whitelist.call(accounts[0]).then(function(result) {
           assert.equal(result, true, "Account should have been whitelisted");
         }) },
-        function() { return crowdsale.totalWhitelisted.call().then(function(result) {
-          assert.equal(result.toNumber(), 1, "Number of whitelisted accounts is incorrect");
+        function() { return whitelist.totalWhitelisted.call().then(function(result) {
+          assert.equal(result.toNumber(), 2, "Number of whitelisted accounts is incorrect");
         }) }
       ];
 
       return executePromises(checks);
 
+    }).then(function(result) {
+
+      // Delisting
+      return whitelist.whitelistAddress([accounts[0]], false, {from: accounts[adminAccount]});
+
+    }).then(function(result) {
+
+      var checks = [
+        function() { return whitelist.whitelist.call(accounts[0]).then(function(result) {
+          assert.equal(result, false, "Account should have been whitelisted");
+        }) },
+        function() { return whitelist.totalWhitelisted.call().then(function(result) {
+          assert.equal(result.toNumber(), 1, "Number of whitelisted accounts is incorrect");
+        }) }
+      ];
+
+      return executePromises(checks);
     });
   });
 

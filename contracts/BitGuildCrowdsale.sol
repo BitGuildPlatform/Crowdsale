@@ -1,15 +1,8 @@
 pragma solidity ^0.4.19;
 
 import "./SafeMath.sol";
-
-/**
- * @title Token interface, we need just one method
- */
-
-contract BitGuildToken {
-  function transfer(address to, uint256 value) public returns (bool);
-  function balanceOf(address who) public view returns (uint256);
-}
+import "./BitGuildToken.sol";
+import "./BitGuildWhitelist.sol";
 
 /**
  * @title BitGuildCrowdsale
@@ -21,8 +14,8 @@ contract BitGuildCrowdsale {
   // Token being sold
   BitGuildToken public token;
 
-  // Admin (used only to manage whitelist/finalization)
-  address admin;
+  // Whitelist being used
+  BitGuildWhitelist public whitelist;
 
   // start and end timestamps where investments are allowed (both inclusive)
   uint256 public startTime;
@@ -45,10 +38,6 @@ contract BitGuildCrowdsale {
   uint256 public weiRaised;
   mapping (address => uint256) public contributions;
 
-  // whitelist for KYC purposes
-  mapping (address => bool) public whitelist;
-  uint256 public totalWhitelisted = 0;
-
   // Finalization flag for when we want to withdraw the remaining tokens after the end
   bool public crowdsaleFinalized = false;
 
@@ -61,17 +50,18 @@ contract BitGuildCrowdsale {
    */
   event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
 
-  function BitGuildCrowdsale(uint256 _startTime, uint256 _endTime, address _token, address _wallet) public {
+  function BitGuildCrowdsale(uint256 _startTime, uint256 _endTime, address _token, address _wallet, address _whitelist) public {
     require(_startTime >= now);
     require(_endTime >= _startTime);
     require(_token != address(0));
     require(_wallet != address(0));
+    require(_whitelist != address(0));
 
-    admin = msg.sender;
     startTime = _startTime;
     endTime = _endTime;
     token = BitGuildToken(_token);
     wallet = _wallet;
+    whitelist = BitGuildWhitelist(_whitelist);
   }
 
   // fallback function can be used to buy tokens
@@ -82,7 +72,7 @@ contract BitGuildCrowdsale {
   // low level token purchase function
   function buyTokens(address beneficiary) public payable {
     require(beneficiary != address(0));
-    require(whitelist[beneficiary]);
+    require(whitelist.whitelist(beneficiary));
     require(validPurchase());
 
     uint256 weiAmount = msg.value;
@@ -136,22 +126,6 @@ contract BitGuildCrowdsale {
     bool withinCap = weiRaised.add(msg.value) <= cap;
 
     return withinPeriod && moreThanMinPurchase && lessThanMaxPurchase && withinCap && !crowdsaleFinalized;
-  }
-
-  // Allows an admin to update whitelist
-  function whitelistAddress(address[] _users, bool _whitelisted) public {
-    require(msg.sender == admin);
-    for (uint i = 0; i < _users.length; i++) {
-      if (whitelist[_users[i]] == _whitelisted) continue;
-      if (_whitelisted) {
-        totalWhitelisted++;
-      } else {
-        if (totalWhitelisted > 0) {
-          totalWhitelisted--;
-        }
-      }
-      whitelist[_users[i]] = _whitelisted;
-    }
   }
 
   // Escape hatch in case the sale needs to be urgently stopped
